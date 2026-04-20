@@ -1,0 +1,1139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Email Network Analytics</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#f8f7f4;--bg2:#ffffff;--bg3:#f1efe8;
+  --border:#e0ddd5;--border2:#ccc9c0;
+  --text:#1a1a18;--text2:#6b6960;--text3:#9c9a92;
+  --blue:#378ADD;--blue-bg:#e6f1fb;--blue-dark:#0c447c;
+  --teal:#1D9E75;--teal-bg:#e1f5ee;--teal-dark:#085041;
+  --amber:#BA7517;--amber-bg:#faeeda;--amber-dark:#633806;
+  --coral:#D85A30;--coral-bg:#faece7;--coral-dark:#712b13;
+  --purple:#7F77DD;--purple-bg:#eeedfe;--purple-dark:#3c3489;
+  --pink:#D4537E;--pink-bg:#fbeaf0;--pink-dark:#72243e;
+  --green:#639922;--green-bg:#eaf3de;--green-dark:#27500a;
+  --red:#E24B4A;--red-bg:#fcebeb;--red-dark:#791f1f;
+  --gray:#888780;--gray-bg:#f1efe8;
+  --radius:8px;--radius-lg:12px;
+  --shadow:0 1px 3px rgba(0,0,0,.08);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;color:var(--text);background:var(--bg);display:flex;height:100vh;overflow:hidden}
+
+/* ── SIDEBAR ── */
+.sidebar{width:220px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto}
+.sidebar-logo{padding:20px 18px 14px;border-bottom:1px solid var(--border)}
+.sidebar-logo .logo-title{font-size:15px;font-weight:600;color:var(--text)}
+.sidebar-logo .logo-sub{font-size:11px;color:var(--text3);margin-top:2px}
+.sidebar-section{padding:10px 0 4px}
+.sidebar-label{font-size:10px;font-weight:600;color:var(--text3);letter-spacing:.06em;text-transform:uppercase;padding:0 18px 6px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 18px;cursor:pointer;font-size:13px;color:var(--text2);transition:all .15s;border-left:3px solid transparent}
+.nav-item:hover{background:var(--bg3);color:var(--text)}
+.nav-item.active{background:var(--blue-bg);color:var(--blue-dark);font-weight:500;border-left-color:var(--blue)}
+.nav-icon{font-size:15px;width:18px;text-align:center;flex-shrink:0}
+.sidebar-footer{margin-top:auto;padding:14px 18px;border-top:1px solid var(--border);font-size:11px;color:var(--text3)}
+
+/* ── MAIN ── */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.topbar{height:52px;background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 22px;gap:12px;flex-shrink:0}
+.topbar-title{font-size:15px;font-weight:600;flex:1}
+.topbar-sub{font-size:12px;color:var(--text3)}
+.content{flex:1;overflow-y:auto;padding:22px}
+
+/* ── BUTTONS ── */
+.btn{padding:7px 14px;border-radius:var(--radius);border:1px solid var(--border2);background:var(--bg2);cursor:pointer;font-size:13px;color:var(--text);font-family:inherit;transition:all .15s;display:inline-flex;align-items:center;gap:6px}
+.btn:hover{background:var(--bg3)}
+.btn-primary{background:var(--blue);color:#fff;border-color:var(--blue)}
+.btn-primary:hover{background:#185fa5}
+.btn-danger{background:var(--red);color:#fff;border-color:var(--red)}
+.btn-danger:hover{background:var(--red-dark)}
+.btn-success{background:var(--teal);color:#fff;border-color:var(--teal)}
+.btn-sm{padding:4px 10px;font-size:12px}
+.btn-group{display:flex;gap:8px;flex-wrap:wrap}
+
+/* ── CARDS & LAYOUT ── */
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:18px;box-shadow:var(--shadow)}
+.card-title{font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:14px}
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px}
+@media(max-width:900px){.grid-4{grid-template-columns:repeat(2,1fr)}.grid-2{grid-template-columns:1fr}}
+
+/* ── METRIC CARDS ── */
+.metric{background:var(--bg3);border-radius:var(--radius);padding:14px;text-align:center}
+.metric-label{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px}
+.metric-value{font-size:26px;font-weight:700;color:var(--text);line-height:1}
+.metric-sub{font-size:11px;color:var(--text3);margin-top:4px}
+.metric-trend{font-size:11px;margin-top:4px}
+.trend-up{color:var(--teal)}.trend-down{color:var(--red)}.trend-neu{color:var(--text3)}
+
+/* ── BADGES ── */
+.badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:500;white-space:nowrap}
+.b-blue{background:var(--blue-bg);color:var(--blue-dark)}
+.b-teal{background:var(--teal-bg);color:var(--teal-dark)}
+.b-amber{background:var(--amber-bg);color:var(--amber-dark)}
+.b-coral{background:var(--coral-bg);color:var(--coral-dark)}
+.b-purple{background:var(--purple-bg);color:var(--purple-dark)}
+.b-pink{background:var(--pink-bg);color:var(--pink-dark)}
+.b-green{background:var(--green-bg);color:var(--green-dark)}
+.b-red{background:var(--red-bg);color:var(--red-dark)}
+.b-gray{background:var(--gray-bg);color:var(--text2)}
+
+/* ── TABLE ── */
+.table-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{padding:10px 14px;text-align:left;font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid var(--border);background:var(--bg3)}
+td{padding:10px 14px;border-bottom:1px solid var(--border);color:var(--text)}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--bg)}
+.td-name{font-weight:500}.td-sub{font-size:11px;color:var(--text3);margin-top:1px}
+
+/* ── FORM ── */
+.form-group{margin-bottom:14px}
+.form-label{display:block;font-size:12px;font-weight:500;color:var(--text2);margin-bottom:5px}
+.form-input,.form-select,.form-textarea{width:100%;padding:8px 11px;border:1px solid var(--border2);border-radius:var(--radius);font-family:inherit;font-size:13px;color:var(--text);background:var(--bg2);transition:border .15s}
+.form-input:focus,.form-select:focus,.form-textarea:focus{outline:none;border-color:var(--blue)}
+.form-textarea{resize:vertical;min-height:80px}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
+/* ── SEARCH ── */
+.search-row{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+.search-input{flex:1;min-width:180px;padding:7px 11px;border:1px solid var(--border2);border-radius:var(--radius);font-family:inherit;font-size:13px;color:var(--text);background:var(--bg2)}
+.search-input:focus{outline:none;border-color:var(--blue)}
+.filter-select{padding:7px 11px;border:1px solid var(--border2);border-radius:var(--radius);font-family:inherit;font-size:13px;color:var(--text);background:var(--bg2)}
+
+/* ── PAGINATION ── */
+.pagination{display:flex;align-items:center;gap:6px;margin-top:12px;justify-content:flex-end}
+.page-info{font-size:12px;color:var(--text3);margin-right:auto}
+.page-btn{padding:5px 11px;border:1px solid var(--border2);border-radius:var(--radius);cursor:pointer;font-size:12px;background:var(--bg2);color:var(--text);font-family:inherit}
+.page-btn.active{background:var(--blue);color:#fff;border-color:var(--blue)}
+.page-btn:hover:not(.active){background:var(--bg3)}
+
+/* ── MODAL ── */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1000;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:var(--bg2);border-radius:var(--radius-lg);border:1px solid var(--border);padding:24px;width:520px;max-height:85vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.15)}
+.modal-title{font-size:16px;font-weight:600;margin-bottom:18px}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:18px;padding-top:14px;border-top:1px solid var(--border)}
+
+/* ── GRAPH CANVAS ── */
+.graph-outer{position:relative;background:var(--bg3);border-radius:var(--radius-lg);border:1px solid var(--border);overflow:hidden;height:480px}
+#network-canvas{position:absolute;inset:0;width:100%;height:100%;cursor:grab;display:block}
+#network-canvas:active{cursor:grabbing}
+.graph-controls{position:absolute;top:12px;right:12px;display:flex;flex-direction:column;gap:6px;z-index:10}
+.graph-btn{width:30px;height:30px;border-radius:var(--radius);border:1px solid var(--border2);background:var(--bg2);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;color:var(--text);box-shadow:var(--shadow)}
+.graph-btn:hover{background:var(--bg3)}
+.graph-legend{position:absolute;bottom:12px;left:12px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:8px 12px;font-size:11px;z-index:10}
+.legend-item{display:flex;align-items:center;gap:6px;margin-bottom:4px;color:var(--text2)}
+.legend-item:last-child{margin-bottom:0}
+.legend-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.node-info{position:absolute;top:12px;left:12px;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius-lg);padding:12px 14px;font-size:12px;max-width:190px;display:none;box-shadow:var(--shadow);z-index:10}
+.node-info.show{display:block}
+.node-info-name{font-size:13px;font-weight:600;margin-bottom:8px}
+.node-info-row{display:flex;justify-content:space-between;gap:10px;margin-bottom:3px;color:var(--text2)}
+.node-info-val{color:var(--text);font-weight:500}
+
+/* ── BAR CHART ROWS ── */
+.bar-row{display:flex;align-items:center;gap:8px;margin-bottom:9px;font-size:12px}
+.bar-name{width:130px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex-shrink:0;color:var(--text)}
+.bar-bg{flex:1;background:var(--bg3);border-radius:3px;height:7px;overflow:hidden}
+.bar-fill{height:100%;border-radius:3px;transition:width .4s}
+.bar-val{width:38px;text-align:right;color:var(--text3);flex-shrink:0}
+
+/* ── HEATMAP ── */
+.heatmap-scroll{overflow:auto;padding-bottom:8px}
+.hm-table{border-collapse:collapse}
+.hm-cell{width:34px;height:34px;border-radius:3px;text-align:center;line-height:34px;font-size:10px;cursor:default;transition:opacity .15s}
+.hm-cell:hover{opacity:.75}
+.hm-label-col{font-size:10px;color:var(--text3);text-align:right;padding-right:6px;white-space:nowrap}
+.hm-label-row{font-size:10px;color:var(--text3);padding-bottom:4px;text-align:center;white-space:nowrap;max-width:34px;overflow:hidden}
+
+/* ── COMMUNITY CARDS ── */
+.comm-card{border-radius:var(--radius);padding:12px 14px;margin-bottom:10px;border-left:4px solid}
+.comm-members{font-size:11px;color:var(--text2);margin-top:5px;line-height:1.7}
+.comm-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:2px}
+.comm-title{font-size:13px;font-weight:600}
+
+/* ── INSIGHT ITEMS ── */
+.insight-row{display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)}
+.insight-row:last-child{border-bottom:none}
+.insight-icon{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.insight-title{font-size:13px;font-weight:600;margin-bottom:3px}
+.insight-desc{font-size:12px;color:var(--text2);line-height:1.6}
+
+/* ── FLOW ROWS ── */
+.flow-row{display:flex;align-items:center;gap:8px;margin-bottom:9px;font-size:12px}
+.flow-from{font-weight:500;width:100px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex-shrink:0}
+.flow-arr{color:var(--text3);font-size:10px;flex-shrink:0}
+.flow-to{flex:1;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* ── HEALTH SCORE ── */
+.health-row{margin-bottom:12px}
+.health-label{display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px}
+.health-score{font-weight:600}
+
+/* ── TOASTS ── */
+.toast{position:fixed;bottom:24px;right:24px;background:var(--teal);color:#fff;padding:10px 18px;border-radius:var(--radius);font-size:13px;z-index:9999;opacity:0;transition:opacity .3s;pointer-events:none;box-shadow:0 4px 12px rgba(0,0,0,.2)}
+.toast.show{opacity:1}
+.toast.error{background:var(--red)}
+
+/* ── LOADING ── */
+.loading{display:flex;align-items:center;justify-content:center;height:200px;color:var(--text3);font-size:13px;gap:8px}
+.spinner{width:18px;height:18px;border:2px solid var(--border2);border-top-color:var(--blue);border-radius:50%;animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── EMPTY STATE ── */
+.empty{text-align:center;padding:40px;color:var(--text3);font-size:13px}
+.empty-icon{font-size:32px;margin-bottom:8px;opacity:.5}
+
+/* ── RANK BADGE ── */
+.rank{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:var(--bg3);font-size:10px;font-weight:600;color:var(--text3);flex-shrink:0}
+
+/* ── TAB BAR ── */
+.tab-bar{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:18px}
+.tab{padding:8px 16px;cursor:pointer;font-size:13px;color:var(--text2);border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s}
+.tab:hover{color:var(--text)}
+.tab.active{color:var(--blue);border-bottom-color:var(--blue);font-weight:500}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<div class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-title">&#9671; EmailNet Analytics</div>
+    <div class="logo-sub">Organizational Communication Analysis</div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">Overview</div>
+    <div class="nav-item active" onclick="nav('dashboard')"><span class="nav-icon">&#9675;</span>Dashboard</div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">Network</div>
+    <div class="nav-item" onclick="nav('graph')"><span class="nav-icon">&#9901;</span>Network graph</div>
+    <div class="nav-item" onclick="nav('centrality')"><span class="nav-icon">&#9733;</span>Centrality</div>
+    <div class="nav-item" onclick="nav('communities')"><span class="nav-icon">&#11041;</span>Communities</div>
+    <div class="nav-item" onclick="nav('flows')"><span class="nav-icon">&#8594;</span>Email flows</div>
+    <div class="nav-item" onclick="nav('heatmap')"><span class="nav-icon">&#9638;</span>Heatmap</div>
+    <div class="nav-item" onclick="nav('insights')"><span class="nav-icon">&#9830;</span>Insights</div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">Data Management</div>
+    <div class="nav-item" onclick="nav('emails')"><span class="nav-icon">&#9993;</span>Emails (CRUD)</div>
+    <div class="nav-item" onclick="nav('people')"><span class="nav-icon">&#9786;</span>People (CRUD)</div>
+    <div class="nav-item" onclick="nav('edges')"><span class="nav-icon">&#8596;</span>Edges (CRUD)</div>
+  </div>
+  <div class="sidebar-footer">v1.0.0 &mdash; Acme Corp &copy; 2025</div>
+</div>
+
+<!-- MAIN CONTENT -->
+<div class="main">
+  <div class="topbar">
+    <div>
+      <div class="topbar-title" id="topbar-title">Dashboard</div>
+      <div class="topbar-sub" id="topbar-sub">Email communication network analysis</div>
+    </div>
+    <div class="btn-group" id="topbar-actions"></div>
+  </div>
+  <div class="content" id="content-area">
+    <div class="loading"><div class="spinner"></div> Loading...</div>
+  </div>
+</div>
+
+<!-- MODALS -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal" id="modal-box">
+    <div class="modal-title" id="modal-title">Modal</div>
+    <div id="modal-body"></div>
+    <div class="modal-actions" id="modal-actions"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ─────────────────────────────────────────────────
+// API HELPER
+// ─────────────────────────────────────────────────
+const API = '/api';
+async function apiFetch(path, opts = {}) {
+  try {
+    const res = await fetch(API + path, {
+      headers: { 'Content-Type': 'application/json' },
+      ...opts,
+      body: opts.body ? JSON.stringify(opts.body) : undefined,
+    });
+    return await res.json();
+  } catch (e) {
+    showToast('Network error: ' + e.message, true);
+    return { success: false };
+  }
+}
+
+// ─────────────────────────────────────────────────
+// TOAST
+// ─────────────────────────────────────────────────
+function showToast(msg, err = false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast' + (err ? ' error' : '') + ' show';
+  setTimeout(() => t.className = 'toast', 2800);
+}
+
+// ─────────────────────────────────────────────────
+// MODAL
+// ─────────────────────────────────────────────────
+function openModal(title, bodyHTML, actions = []) {
+  document.getElementById('modal-title').textContent = title;
+  document.getElementById('modal-body').innerHTML = bodyHTML;
+  document.getElementById('modal-actions').innerHTML =
+    `<button class="btn" onclick="closeModal()">Cancel</button>` +
+    actions.map(a => `<button class="btn ${a.cls||''}" onclick="${a.fn}">${a.label}</button>`).join('');
+  document.getElementById('modal-overlay').classList.add('open');
+}
+function closeModal() { document.getElementById('modal-overlay').classList.remove('open'); }
+document.getElementById('modal-overlay').addEventListener('click', e => { if (e.target === e.currentTarget) closeModal(); });
+
+// ─────────────────────────────────────────────────
+// NAVIGATION
+// ─────────────────────────────────────────────────
+const PAGE_META = {
+  dashboard:   { title: 'Dashboard',        sub: 'Overview of email communication analytics' },
+  graph:       { title: 'Network graph',    sub: 'Interactive force-directed communication graph' },
+  centrality:  { title: 'Centrality analysis', sub: 'Degree · Betweenness · Closeness · PageRank' },
+  communities: { title: 'Community detection', sub: 'Clusters of frequent communication' },
+  flows:       { title: 'Email flows',      sub: 'Directed communication volume and response patterns' },
+  heatmap:     { title: 'Communication heatmap', sub: 'N×N matrix of email volume between all pairs' },
+  insights:    { title: 'Organizational insights', sub: 'Actionable findings from the network' },
+  emails:      { title: 'Emails',           sub: 'Full CRUD management of email records' },
+  people:      { title: 'People',           sub: 'Manage organizational members' },
+  edges:       { title: 'Edges',            sub: 'Manage network connections' },
+};
+
+function nav(page) {
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => {
+    if (n.getAttribute('onclick') && n.getAttribute('onclick').includes(`'${page}'`)) n.classList.add('active');
+  });
+  const m = PAGE_META[page] || {};
+  document.getElementById('topbar-title').textContent = m.title || page;
+  document.getElementById('topbar-sub').textContent   = m.sub   || '';
+  document.getElementById('topbar-actions').innerHTML = '';
+  const area = document.getElementById('content-area');
+  area.innerHTML = '<div class="loading"><div class="spinner"></div> Loading...</div>';
+  const renderers = {
+    dashboard: renderDashboard, graph: renderGraph, centrality: renderCentrality,
+    communities: renderCommunities, flows: renderFlows, heatmap: renderHeatmap,
+    insights: renderInsights, emails: renderEmails, people: renderPeople, edges: renderEdges,
+  };
+  if (renderers[page]) renderers[page]();
+}
+
+// ─────────────────────────────────────────────────
+// DEPT COLORS
+// ─────────────────────────────────────────────────
+const DEPT_COLORS = { Engineering:'#378ADD', Marketing:'#EF9F27', Finance:'#1D9E75', HR:'#D4537E', Sales:'#D85A30', Executive:'#7F77DD' };
+const COMM_COLORS = ['#378ADD','#1D9E75','#D85A30','#7F77DD','#D4537E','#EF9F27','#85B7EB'];
+function deptBadge(dept) {
+  const col = DEPT_COLORS[dept] || '#888';
+  return `<span class="badge" style="background:${col}22;color:${col}">${dept}</span>`;
+}
+function sentBadge(s) {
+  return s === 'Positive' ? `<span class="badge b-teal">${s}</span>` :
+         s === 'Negative' ? `<span class="badge b-red">${s}</span>` :
+         `<span class="badge b-gray">${s}</span>`;
+}
+function priBadge(p) {
+  return p === 'High'   ? `<span class="badge b-coral">${p}</span>` :
+         p === 'Low'    ? `<span class="badge b-blue">${p}</span>` :
+         `<span class="badge b-amber">${p}</span>`;
+}
+function statBadge(s) {
+  return s === 'Replied'  ? `<span class="badge b-teal">${s}</span>` :
+         s === 'Unread'   ? `<span class="badge b-amber">${s}</span>` :
+         s === 'Archived' ? `<span class="badge b-gray">${s}</span>` :
+         `<span class="badge b-blue">${s}</span>`;
+}
+
+// ─────────────────────────────────────────────────
+// CHART HELPERS
+// ─────────────────────────────────────────────────
+const chartInstances = {};
+function mkChart(id, type, data, options = {}) {
+  if (chartInstances[id]) chartInstances[id].destroy();
+  const ctx = document.getElementById(id);
+  if (!ctx) return;
+  chartInstances[id] = new Chart(ctx, {
+    type, data,
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: '#888780', font: { size: 11 } } } },
+      ...options,
+    }
+  });
+}
+
+// ─────────────────────────────────────────────────
+// DASHBOARD
+// ─────────────────────────────────────────────────
+async function renderDashboard() {
+  const [ovRes, statsRes, centRes] = await Promise.all([
+    apiFetch('/analytics/overview'),
+    apiFetch('/stats/summary'),
+    apiFetch('/analytics/centrality'),
+  ]);
+  if (!ovRes.success) return;
+  const ov = ovRes.data, stats = statsRes.data, cent = centRes.data;
+  const area = document.getElementById('content-area');
+  area.innerHTML = `
+    <div class="grid-4">
+      <div class="metric"><div class="metric-label">Total people</div><div class="metric-value">${ov.totalPeople}</div><div class="metric-sub">Org members</div></div>
+      <div class="metric"><div class="metric-label">Total emails</div><div class="metric-value">${ov.totalEmails}</div><div class="metric-sub trend-up">&#8593; Last 90 days</div></div>
+      <div class="metric"><div class="metric-label">Network density</div><div class="metric-value">${ov.density}%</div><div class="metric-sub">Connectedness</div></div>
+      <div class="metric"><div class="metric-label">Positive sentiment</div><div class="metric-value">${ov.positivePct}%</div><div class="metric-sub trend-up">&#8593; Healthy</div></div>
+    </div>
+    <div class="grid-4" style="margin-bottom:18px">
+      <div class="metric"><div class="metric-label">Network edges</div><div class="metric-value">${ov.totalEdges}</div><div class="metric-sub">Connections</div></div>
+      <div class="metric"><div class="metric-label">Avg degree</div><div class="metric-value">${ov.avgDegree}</div><div class="metric-sub">Emails/person</div></div>
+      <div class="metric"><div class="metric-label">Unread</div><div class="metric-value" style="color:var(--amber)">${ov.unreadCount}</div><div class="metric-sub">Need attention</div></div>
+      <div class="metric"><div class="metric-label">Avg response</div><div class="metric-value">${ov.avgResponseHr}h</div><div class="metric-sub">Response time</div></div>
+    </div>
+    <div class="grid-2">
+      <div class="card"><div class="card-title">Emails by category</div><div style="height:200px"><canvas id="ch-cat"></canvas></div></div>
+      <div class="card"><div class="card-title">Sentiment distribution</div><div style="height:200px"><canvas id="ch-sent"></canvas></div></div>
+    </div>
+    <div class="grid-2">
+      <div class="card"><div class="card-title">Email volume by department</div><div style="height:200px"><canvas id="ch-dept"></canvas></div></div>
+      <div class="card"><div class="card-title">Top 6 influencers (PageRank)</div><div style="height:200px"><canvas id="ch-pr"></canvas></div></div>
+    </div>`;
+  // Charts
+  const cats = Object.keys(stats.byCategory), catVals = cats.map(k => stats.byCategory[k]);
+  mkChart('ch-cat', 'doughnut', { labels: cats, datasets: [{ data: catVals, backgroundColor: ['#378ADD','#1D9E75','#D85A30','#7F77DD','#D4537E','#EF9F27'].slice(0,cats.length), borderWidth: 0 }] }, { cutout: '65%', plugins: { legend: { position: 'right', labels: { color:'#888780', font:{ size:10 }, boxWidth:10 } } } });
+  const sentColors = { Positive:'#1D9E75', Neutral:'#888780', Negative:'#E24B4A' };
+  const sentLabels = Object.keys(stats.bySentiment);
+  mkChart('ch-sent', 'pie', { labels: sentLabels, datasets: [{ data: sentLabels.map(k => stats.bySentiment[k]), backgroundColor: sentLabels.map(k => sentColors[k] + 'cc'), borderWidth: 0 }] }, { plugins: { legend: { position: 'right', labels: { color:'#888780', font:{ size:10 }, boxWidth:10 } } } });
+  const depts = Object.keys(stats.byDept);
+  mkChart('ch-dept', 'bar', { labels: depts, datasets: [{ label: 'Emails', data: depts.map(d => stats.byDept[d]), backgroundColor: depts.map(d => (DEPT_COLORS[d]||'#888')+'aa'), borderRadius: 4, borderWidth: 0 }] }, { plugins: { legend: { display: false } }, scales: { y: { ticks:{ color:'#888780', font:{ size:10 } }, grid:{ color:'rgba(0,0,0,.05)' } }, x: { ticks:{ color:'#888780', font:{ size:10 } }, grid:{ display:false } } } });
+  const top6 = cent.slice(0,6);
+  mkChart('ch-pr', 'bar', { labels: top6.map(p => p.name.split(' ')[0]), datasets: [{ label: 'PageRank', data: top6.map(p => parseFloat((p.pagerank*100).toFixed(2))), backgroundColor: '#7F77DDaa', borderRadius: 4, borderWidth: 0 }] }, { indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { ticks:{ color:'#888780', font:{ size:10 } }, grid:{ color:'rgba(0,0,0,.05)' } }, y: { ticks:{ color:'#888780', font:{ size:10 } }, grid:{ display:false } } } });
+}
+
+// ─────────────────────────────────────────────────
+// NETWORK GRAPH
+// ─────────────────────────────────────────────────
+let graphData = null, graphScale = 1, graphOX = 0, graphOY = 0;
+let gDragging = null, gDragStart = null, gPanning = false, gPanStart = null, gSelected = null;
+let gCanvas, gCtx, gColorMode = 'community', gShowLabels = true, gDeptFilter = '';
+
+async function renderGraph() {
+  const res = await apiFetch('/analytics/graph');
+  if (!res.success) return;
+  graphData = res.data;
+  graphScale = 1; graphOX = 0; graphOY = 0; gSelected = null;
+  document.getElementById('topbar-actions').innerHTML = `
+    <select class="filter-select" onchange="gLayoutChange(this.value)"><option value="force">Force-directed</option><option value="radial">Radial</option><option value="hierarchy">Hierarchy</option></select>
+    <select class="filter-select" onchange="gColorMode=this.value;gDraw()"><option value="community">By community</option><option value="dept">By department</option><option value="centrality">By PageRank</option></select>
+    <label style="font-size:12px;color:var(--text2);display:flex;align-items:center;gap:5px"><input type="checkbox" checked onchange="gShowLabels=this.checked;gDraw()"> Labels</label>
+    <button class="btn" onclick="gReset()">Reset</button>`;
+  const area = document.getElementById('content-area');
+  const n = graphData.nodes.length, e = graphData.edges.length;
+  const maxE = n*(n-1)/2;
+  const avgDeg = (graphData.edges.reduce((s,ed)=>s+ed.weight,0)*2/n).toFixed(1);
+  area.innerHTML = `
+    <div class="grid-4">
+      <div class="metric"><div class="metric-label">Nodes</div><div class="metric-value">${n}</div><div class="metric-sub">People</div></div>
+      <div class="metric"><div class="metric-label">Edges</div><div class="metric-value">${e}</div><div class="metric-sub">Connections</div></div>
+      <div class="metric"><div class="metric-label">Density</div><div class="metric-value">${(e/maxE*100).toFixed(1)}%</div><div class="metric-sub">Connectedness</div></div>
+      <div class="metric"><div class="metric-label">Avg degree</div><div class="metric-value">${avgDeg}</div><div class="metric-sub">Vol/person</div></div>
+    </div>
+    <div class="graph-outer">
+      <canvas id="network-canvas"></canvas>
+      <div class="graph-controls">
+        <button class="graph-btn" title="Zoom in" onclick="graphScale=Math.min(4,graphScale*1.2);gDraw()">+</button>
+        <button class="graph-btn" title="Zoom out" onclick="graphScale=Math.max(.2,graphScale/1.2);gDraw()">&#8722;</button>
+        <button class="graph-btn" title="Fit" onclick="graphScale=1;graphOX=0;graphOY=0;gDraw()">&#8862;</button>
+      </div>
+      <div class="graph-legend" id="graph-legend"></div>
+      <div class="node-info" id="node-info"><div class="node-info-name" id="ni-name"></div><div id="ni-rows"></div></div>
+    </div>
+    <div style="margin-top:10px;font-size:11px;color:var(--text3)">&#8226; Click a node to inspect &nbsp; &#8226; Drag to move nodes &nbsp; &#8226; Scroll to zoom &nbsp; &#8226; Drag background to pan</div>`;
+  gCanvas = document.getElementById('network-canvas');
+  const wrap = gCanvas.parentElement;
+  gCanvas.width  = wrap.clientWidth;
+  gCanvas.height = wrap.clientHeight;
+  gCtx = gCanvas.getContext('2d');
+  gInitPositions();
+  gRunSim();
+  gBuildLegend();
+  gBindEvents();
+}
+
+function gNodePos(id) { return graphData.nodes.find(n => n.id === id); }
+function gAdj(id) { return graphData.edges.filter(e => e.from === id || e.to === id).flatMap(e => [e.from, e.to]).filter(x => x !== id); }
+
+function gInitPositions() {
+  const W = gCanvas.width, H = gCanvas.height, cx = W/2, cy = H/2;
+  const r = Math.min(W, H) * 0.33;
+  graphData.nodes.forEach((n, i) => {
+    const a = (i / graphData.nodes.length) * Math.PI * 2;
+    n.x = cx + Math.cos(a) * r * (0.5 + Math.random() * 0.5);
+    n.y = cy + Math.sin(a) * r * (0.5 + Math.random() * 0.5);
+    n.vx = 0; n.vy = 0;
+  });
+}
+
+function gSimStep() {
+  const W = gCanvas.width, H = gCanvas.height, cx = W/2, cy = H/2;
+  graphData.nodes.forEach(n => { n.vx = 0; n.vy = 0; });
+  for (let i = 0; i < graphData.nodes.length; i++) {
+    for (let j = i+1; j < graphData.nodes.length; j++) {
+      const a = graphData.nodes[i], b = graphData.nodes[j];
+      const dx = a.x-b.x, dy = a.y-b.y, dist = Math.sqrt(dx*dx+dy*dy)||1;
+      const rep = 4000/(dist*dist);
+      a.vx += dx/dist*rep; a.vy += dy/dist*rep;
+      b.vx -= dx/dist*rep; b.vy -= dy/dist*rep;
+    }
+    const n = graphData.nodes[i];
+    n.vx -= (n.x - cx) * 0.004;
+    n.vy -= (n.y - cy) * 0.004;
+  }
+  graphData.edges.forEach(e => {
+    const a = gNodePos(e.from), b = gNodePos(e.to);
+    if (!a || !b) return;
+    const dx = b.x-a.x, dy = b.y-a.y, dist = Math.sqrt(dx*dx+dy*dy)||1;
+    const ideal = 90 + 150/Math.max(e.weight, 1);
+    const f = (dist - ideal) * 0.06;
+    a.vx += dx/dist*f; a.vy += dy/dist*f;
+    b.vx -= dx/dist*f; b.vy -= dy/dist*f;
+  });
+  graphData.nodes.forEach(n => {
+    n.x += n.vx * 0.35; n.y += n.vy * 0.35;
+    n.x = Math.max(30, Math.min(gCanvas.width-30, n.x));
+    n.y = Math.max(30, Math.min(gCanvas.height-30, n.y));
+  });
+}
+
+function gRunSim() { for (let i = 0; i < 220; i++) gSimStep(); gDraw(); }
+
+function gNodeColor(n) {
+  if (gColorMode === 'dept')      return DEPT_COLORS[n.dept] || '#888';
+  if (gColorMode === 'centrality') return lerpHex('#B5D4F4', '#0C447C', n.prNorm);
+  const depts = [...new Set(graphData.nodes.map(x => x.dept))];
+  return COMM_COLORS[depts.indexOf(n.community) % COMM_COLORS.length];
+}
+function lerpHex(a, b, t) {
+  const ah = parseInt(a.slice(1),16), bh = parseInt(b.slice(1),16);
+  const r = Math.round(((ah>>16)&0xff) + (((bh>>16)&0xff)-((ah>>16)&0xff))*t);
+  const g = Math.round(((ah>>8)&0xff)  + (((bh>>8)&0xff) -((ah>>8)&0xff))*t);
+  const bl= Math.round((ah&0xff)       + ((bh&0xff)       -(ah&0xff))*t);
+  return `rgb(${r},${g},${bl})`;
+}
+
+function gDraw() {
+  if (!gCanvas || !gCtx) return;
+  gCtx.clearRect(0, 0, gCanvas.width, gCanvas.height);
+  gCtx.save();
+  const W = gCanvas.width, H = gCanvas.height;
+  gCtx.translate(W/2 + graphOX, H/2 + graphOY);
+  gCtx.scale(graphScale, graphScale);
+  gCtx.translate(-W/2, -H/2);
+  // edges
+  graphData.edges.forEach(e => {
+    const a = gNodePos(e.from), b = gNodePos(e.to);
+    if (!a || !b) return;
+    gCtx.beginPath(); gCtx.moveTo(a.x, a.y); gCtx.lineTo(b.x, b.y);
+    gCtx.strokeStyle = `rgba(136,135,128,${Math.min(0.55, 0.12 + e.weight/120)})`;
+    gCtx.lineWidth = 0.5 + e.weight/70; gCtx.stroke();
+  });
+  // nodes
+  graphData.nodes.forEach(n => {
+    const col = gNodeColor(n), r = n.radius;
+    gCtx.beginPath(); gCtx.arc(n.x, n.y, r, 0, Math.PI*2);
+    gCtx.fillStyle = col + 'dd'; gCtx.fill();
+    gCtx.strokeStyle = col; gCtx.lineWidth = 1.5; gCtx.stroke();
+    if (gSelected && gSelected.id === n.id) {
+      gCtx.beginPath(); gCtx.arc(n.x, n.y, r+5, 0, Math.PI*2);
+      gCtx.strokeStyle = col; gCtx.lineWidth = 2.5; gCtx.setLineDash([4,3]); gCtx.stroke(); gCtx.setLineDash([]);
+    }
+    if (gShowLabels) {
+      gCtx.fillStyle = '#1a1a18'; gCtx.font = '500 11px sans-serif';
+      gCtx.textAlign = 'center'; gCtx.textBaseline = 'top';
+      gCtx.fillText(n.name.split(' ')[0], n.x, n.y + r + 3);
+    }
+  });
+  gCtx.restore();
+}
+
+function gCanvasToNode(cx, cy) {
+  const W = gCanvas.width, H = gCanvas.height;
+  const wx = (cx - W/2 - graphOX) / graphScale + W/2;
+  const wy = (cy - H/2 - graphOY) / graphScale + H/2;
+  for (let i = graphData.nodes.length-1; i >= 0; i--) {
+    const n = graphData.nodes[i]; const r = n.radius + 5;
+    if ((wx-n.x)**2 + (wy-n.y)**2 < r*r) return n;
+  }
+  return null;
+}
+function gShowInfo(n) {
+  const panel = document.getElementById('node-info');
+  if (!n) { panel.classList.remove('show'); return; }
+  panel.classList.add('show');
+  document.getElementById('ni-name').textContent = n.name;
+  document.getElementById('ni-rows').innerHTML = `
+    <div class="node-info-row"><span>Dept</span><span class="node-info-val">${n.dept}</span></div>
+    <div class="node-info-row"><span>Role</span><span class="node-info-val">${n.role}</span></div>
+    <div class="node-info-row"><span>Degree</span><span class="node-info-val">${n.degree}</span></div>
+    <div class="node-info-row"><span>Betweenness</span><span class="node-info-val">${n.betweenness}</span></div>
+    <div class="node-info-row"><span>PageRank</span><span class="node-info-val">${(n.pagerank*100).toFixed(1)}%</span></div>
+    <div class="node-info-row"><span>Community</span><span class="node-info-val">${n.community}</span></div>`;
+}
+function gBindEvents() {
+  gCanvas.onmousedown = e => {
+    const r = gCanvas.getBoundingClientRect(), cx = e.clientX-r.left, cy = e.clientY-r.top;
+    const n = gCanvasToNode(cx, cy);
+    if (n) { gDragging = n; gDragStart = { mx:cx, my:cy, nx:n.x, ny:n.y }; }
+    else    { gPanning = true; gPanStart = { mx:cx, my:cy, ox:graphOX, oy:graphOY }; }
+  };
+  gCanvas.onmousemove = e => {
+    const r = gCanvas.getBoundingClientRect(), cx = e.clientX-r.left, cy = e.clientY-r.top;
+    if (gDragging && gDragStart) {
+      gDragging.x = gDragStart.nx + (cx-gDragStart.mx)/graphScale;
+      gDragging.y = gDragStart.ny + (cy-gDragStart.my)/graphScale;
+      gDraw();
+    } else if (gPanning && gPanStart) {
+      graphOX = gPanStart.ox + (cx-gPanStart.mx);
+      graphOY = gPanStart.oy + (cy-gPanStart.my);
+      gDraw();
+    }
+  };
+  gCanvas.onmouseup = e => {
+    const r = gCanvas.getBoundingClientRect(), cx = e.clientX-r.left, cy = e.clientY-r.top;
+    if (gDragging && Math.abs(cx-gDragStart?.mx) < 4 && Math.abs(cy-gDragStart?.my) < 4) {
+      gSelected = gDragging === gSelected ? null : gDragging;
+      gShowInfo(gSelected);
+    }
+    gDragging = null; gDragStart = null; gPanning = false; gPanStart = null; gDraw();
+  };
+  gCanvas.onwheel = e => { e.preventDefault(); graphScale = Math.max(.2, Math.min(4, graphScale * (e.deltaY > 0 ? 0.9 : 1.1))); gDraw(); };
+}
+function gBuildLegend() {
+  const el = document.getElementById('graph-legend');
+  if (!el) return;
+  const depts = [...new Set(graphData.nodes.map(n => n.dept))];
+  el.innerHTML = depts.map((d,i) => `<div class="legend-item"><div class="legend-dot" style="background:${gColorMode==='dept'?DEPT_COLORS[d]:COMM_COLORS[i%COMM_COLORS.length]}"></div>${d}</div>`).join('');
+}
+function gLayoutChange(mode) {
+  const W = gCanvas.width, H = gCanvas.height, cx = W/2, cy = H/2;
+  if (mode === 'radial') {
+    const depts = {}; graphData.nodes.forEach(n => { if (!depts[n.dept]) depts[n.dept]=[]; depts[n.dept].push(n); });
+    const dk = Object.keys(depts);
+    dk.forEach((d,di) => {
+      const ar = (di/dk.length)*Math.PI*2;
+      const hx = cx+Math.cos(ar)*160, hy = cy+Math.sin(ar)*160;
+      depts[d].forEach((n,ni) => {
+        const a2 = ar+(ni/depts[d].length)*Math.PI*0.55-Math.PI*0.28;
+        n.x = hx+Math.cos(a2)*75; n.y = hy+Math.sin(a2)*75;
+      });
+    });
+  } else if (mode === 'hierarchy') {
+    const sorted = [...graphData.nodes].sort((a,b)=>b.pagerank-a.pagerank);
+    const tiers = [sorted.slice(0,2), sorted.slice(2,6), sorted.slice(6,11), sorted.slice(11)];
+    tiers.forEach((tier,ti) => {
+      const y = 70 + ti*(H-140)/3;
+      tier.forEach((n,ni) => { n.x = W/(tier.length+1)*(ni+1); n.y = y; });
+    });
+  } else { gInitPositions(); gRunSim(); return; }
+  gDraw();
+}
+function gReset() { gInitPositions(); gRunSim(); }
+
+// ─────────────────────────────────────────────────
+// CENTRALITY
+// ─────────────────────────────────────────────────
+async function renderCentrality() {
+  const res = await apiFetch('/analytics/centrality');
+  if (!res.success) return;
+  const data = res.data;
+  const maxDeg = Math.max(...data.map(p=>p.degree))||1;
+  const maxBet = Math.max(...data.map(p=>p.betweenness))||1;
+  const maxClo = Math.max(...data.map(p=>p.closeness))||1;
+  const maxPR  = Math.max(...data.map(p=>p.pagerank))||1;
+  function bars(arr, valFn, color) {
+    return arr.slice(0,8).map(p=>`<div class="bar-row"><div class="bar-name">${p.name.split(' ').map((w,i)=>i===0?w:w[0]+'.').join(' ')}</div><div class="bar-bg"><div class="bar-fill" style="width:${Math.round(valFn(p)/1*100)}%;background:${color}"></div></div><div class="bar-val">${typeof valFn(p)==='number'&&valFn(p)<1?(valFn(p)*100).toFixed(0)+'%':valFn(p)}</div></div>`).join('');
+  }
+  const degSorted = [...data].sort((a,b)=>b.degree-a.degree);
+  const betSorted = [...data].sort((a,b)=>b.betweenness-a.betweenness);
+  const cloSorted = [...data].sort((a,b)=>b.closeness-a.closeness);
+  const area = document.getElementById('content-area');
+  area.innerHTML = `
+    <div class="grid-2">
+      <div class="card"><div class="card-title">Degree centrality — most connected</div>${bars(degSorted, p=>p.degree/maxDeg, '#378ADD')}</div>
+      <div class="card"><div class="card-title">Betweenness — key bridges</div>${bars(betSorted, p=>p.betweenness/maxBet, '#D85A30')}</div>
+    </div>
+    <div class="grid-2">
+      <div class="card"><div class="card-title">Closeness — fastest reach</div>${bars(cloSorted, p=>p.closeness/maxClo, '#1D9E75')}</div>
+      <div class="card"><div class="card-title">PageRank — overall influence</div>${bars([...data].slice(0,8), p=>p.pagerank/maxPR, '#7F77DD')}</div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>#</th><th>Person</th><th>Dept</th><th>Degree</th><th>Betweenness</th><th>Closeness</th><th>PageRank</th><th>Role label</th></tr></thead>
+        <tbody>${data.map((p,i)=>{
+          const role = p.betweenness>5?'Bridge':p.degree>100?'Hub':p.pagerank>0.08?'Influencer':'Connector';
+          const rb = role==='Hub'?'b-blue':role==='Bridge'?'b-coral':role==='Influencer'?'b-purple':'b-teal';
+          return `<tr>
+            <td><span class="rank">${i+1}</span></td>
+            <td><div class="td-name">${p.name}</div><div class="td-sub">${p.role}</div></td>
+            <td>${deptBadge(p.dept)}</td>
+            <td>${p.degree}</td>
+            <td>${p.betweenness}</td>
+            <td>${(p.closeness*100).toFixed(0)}%</td>
+            <td>${(p.pagerank*100).toFixed(2)}%</td>
+            <td><span class="badge ${rb}">${role}</span></td>
+          </tr>`;
+        }).join('')}</tbody>
+      </table>
+    </div>`;
+}
+
+// ─────────────────────────────────────────────────
+// COMMUNITIES
+// ─────────────────────────────────────────────────
+async function renderCommunities() {
+  const res = await apiFetch('/analytics/communities');
+  if (!res.success) return;
+  const { communities: comms, modularity, interEdgePct } = res.data;
+  const largest = Math.max(...comms.map(c=>c.memberCount));
+  const area = document.getElementById('content-area');
+  area.innerHTML = `
+    <div class="grid-4">
+      <div class="metric"><div class="metric-label">Communities</div><div class="metric-value">${comms.length}</div><div class="metric-sub">Detected clusters</div></div>
+      <div class="metric"><div class="metric-label">Modularity</div><div class="metric-value">${modularity}</div><div class="metric-sub">Quality (0–1)</div></div>
+      <div class="metric"><div class="metric-label">Largest cluster</div><div class="metric-value">${largest}</div><div class="metric-sub">Members</div></div>
+      <div class="metric"><div class="metric-label">Inter-cluster</div><div class="metric-value">${interEdgePct}%</div><div class="metric-sub">Cross emails</div></div>
+    </div>
+    <div class="grid-2">
+      <div style="display:flex;flex-direction:column;gap:10px">${comms.map((c,i)=>{
+        const col = COMM_COLORS[i%COMM_COLORS.length];
+        return `<div class="comm-card" style="background:${col}11;border-color:${col}">
+          <div class="comm-header"><div class="comm-title" style="color:${col}">${c.name} cluster</div>
+          <div style="display:flex;gap:6px"><span class="badge" style="background:${col}22;color:${col}">${c.memberCount} members</span><span class="badge" style="background:${col}22;color:${col}">${c.intraVolume} emails</span></div></div>
+          <div class="comm-members">${c.members.map(m=>`${m.name} (${m.role})`).join(' &nbsp;·&nbsp; ')}</div>
+        </div>`;
+      }).join('')}</div>
+      <div class="card"><div class="card-title">Cluster size distribution</div><div style="height:280px"><canvas id="ch-comm"></canvas></div></div>
+    </div>`;
+  mkChart('ch-comm', 'bar', {
+    labels: comms.map(c=>c.name),
+    datasets: [
+      { label:'Members', data: comms.map(c=>c.memberCount), backgroundColor: comms.map((_,i)=>COMM_COLORS[i%COMM_COLORS.length]+'bb'), borderRadius:4, borderWidth:0 },
+      { label:'Intra edges', data: comms.map(c=>c.intraEdges), backgroundColor: comms.map((_,i)=>COMM_COLORS[i%COMM_COLORS.length]+'44'), borderRadius:4, borderWidth:0 },
+    ]
+  }, { plugins:{ legend:{ labels:{ color:'#888780', font:{ size:10 } } } }, scales:{ y:{ ticks:{ color:'#888780', font:{ size:10 } }, grid:{ color:'rgba(0,0,0,.05)' } }, x:{ ticks:{ color:'#888780', font:{ size:10 } }, grid:{ display:false } } } });
+}
+
+// ─────────────────────────────────────────────────
+// FLOWS
+// ─────────────────────────────────────────────────
+async function renderFlows() {
+  const res = await apiFetch('/analytics/flows');
+  if (!res.success) return;
+  const { topFlows, deptFlows } = res.data;
+  const maxFlow  = topFlows[0]?.count  || 1;
+  const maxDFlow = deptFlows[0]?.volume || 1;
+  const area = document.getElementById('content-area');
+  area.innerHTML = `
+    <div class="grid-2">
+      <div class="card"><div class="card-title">Top directed flows (person)</div>
+        ${topFlows.slice(0,12).map(f=>`<div class="flow-row">
+          <div class="flow-from">${f.fromPerson?.name?.split(' ')[0]||f.from}</div>
+          <div class="flow-arr">&#8594;</div>
+          <div class="flow-to">${f.toPerson?.name?.split(' ')[0]||f.to}</div>
+          <div class="bar-bg" style="max-width:90px"><div class="bar-fill" style="width:${Math.round(f.count/maxFlow*100)}%;background:#378ADD"></div></div>
+          <div class="bar-val">${f.count}</div>
+        </div>`).join('')}
+      </div>
+      <div class="card"><div class="card-title">Department-level flows</div>
+        ${deptFlows.map(f=>`<div class="flow-row">
+          <div style="flex:1;font-size:12px;color:var(--text)">${f.pair}</div>
+          <div class="bar-bg" style="max-width:80px"><div class="bar-fill" style="width:${Math.round(f.volume/maxDFlow*100)}%;background:#EF9F27"></div></div>
+          <div class="bar-val">${f.volume}</div>
+        </div>`).join('')}
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>From</th><th>To</th><th>Count</th><th>Replies</th><th>Avg resp (h)</th><th>Type</th></tr></thead>
+        <tbody>${topFlows.slice(0,30).map(f=>{
+          const cross = f.crossCluster;
+          return `<tr>
+            <td><div class="td-name">${f.fromPerson?.name||f.from}</div><div class="td-sub">${f.fromPerson?.dept||''}</div></td>
+            <td><div class="td-name">${f.toPerson?.name||f.to}</div><div class="td-sub">${f.toPerson?.dept||''}</div></td>
+            <td>${f.count}</td><td>${f.replies}</td>
+            <td>${f.avgResponse !== null ? f.avgResponse+'h' : '—'}</td>
+            <td><span class="badge ${cross?'b-amber':'b-teal'}">${cross?'Cross-cluster':'Intra-cluster'}</span></td>
+          </tr>`;
+        }).join('')}</tbody>
+      </table>
+    </div>`;
+}
+
+// ─────────────────────────────────────────────────
+// HEATMAP
+// ─────────────────────────────────────────────────
+async function renderHeatmap() {
+  document.getElementById('topbar-actions').innerHTML = `
+    <select class="filter-select" id="hm-metric" onchange="loadHeatmap(this.value)">
+      <option value="volume">Email volume</option>
+      <option value="response">Response rate</option>
+      <option value="sentiment">Sentiment score</option>
+    </select>`;
+  loadHeatmap('volume');
+}
+async function loadHeatmap(metric) {
+  const res = await apiFetch(`/analytics/heatmap?metric=${metric}`);
+  if (!res.success) return;
+  const { people, matrix } = res.data;
+  const maxV = Math.max(...matrix.flat()) || 1;
+  const cellW = Math.max(26, Math.min(38, Math.floor(560 / (people.length + 1))));
+  let html = `<table class="hm-table"><tr><td style="width:${cellW}px;height:${cellW}px"></td>`;
+  people.forEach(p => { html += `<td class="hm-label-row" style="width:${cellW}px">${p.name.split(' ')[0]}</td>`; });
+  html += '</tr>';
+  matrix.forEach((row, i) => {
+    html += `<tr><td class="hm-label-col">${people[i].name.split(' ')[0]}</td>`;
+    row.forEach((v, j) => {
+      const t = i === j ? 0 : v / maxV;
+      const alpha = t.toFixed(2);
+      const bg = i === j ? '#f1efe8' : `rgba(55,138,221,${alpha})`;
+      const fg = t > 0.55 ? '#fff' : '#888780';
+      html += `<td class="hm-cell" style="background:${bg};color:${fg};width:${cellW}px;height:${cellW}px" title="${people[i].name} → ${people[j].name}: ${v}">${v > 0 ? v : ''}</td>`;
+    });
+    html += '</tr>';
+  });
+  html += '</table>';
+  const area = document.getElementById('content-area');
+  area.innerHTML = `
+    <div class="grid-3" style="margin-bottom:16px">
+      <div class="metric"><div class="metric-label">Matrix size</div><div class="metric-value">${people.length}×${people.length}</div></div>
+      <div class="metric"><div class="metric-label">Non-zero cells</div><div class="metric-value">${matrix.flat().filter(v=>v>0).length}</div></div>
+      <div class="metric"><div class="metric-label">Max value</div><div class="metric-value">${maxV}</div></div>
+    </div>
+    <div class="card"><div class="card-title">Communication matrix &mdash; ${metric}</div><div class="heatmap-scroll">${html}</div></div>`;
+}
+
+// ─────────────────────────────────────────────────
+// INSIGHTS
+// ─────────────────────────────────────────────────
+async function renderInsights() {
+  const res = await apiFetch('/analytics/insights');
+  if (!res.success) return;
+  const d = res.data;
+  document.getElementById('topbar-actions').innerHTML = `<button class="btn btn-primary" onclick="nav('dashboard')">&#9675; Full dashboard</button>`;
+  const area = document.getElementById('content-area');
+  area.innerHTML = `
+    <div class="grid-4">
+      ${d.healthScores.slice(0,4).map(s=>`<div class="metric"><div class="metric-label">${s.label}</div><div class="metric-value">${s.value}</div><div class="metric-sub">/ 100</div></div>`).join('')}
+    </div>
+    <div class="grid-2">
+      <div class="card"><div class="card-title">Key findings</div>
+        <div class="insight-row"><div class="insight-icon" style="background:#e6f1fb;color:#0c447c">&#9733;</div><div><div class="insight-title">${d.topInfluencer.name} — top influencer</div><div class="insight-desc">Highest PageRank at ${(d.topInfluencer.pagerank*100).toFixed(1)}%. Emails from this node reach the entire network most efficiently.</div></div></div>
+        <div class="insight-row"><div class="insight-icon" style="background:#eeedfe;color:#3c3489">&#11041;</div><div><div class="insight-title">${d.communityCount} communication clusters detected</div><div class="insight-desc">Modularity score 0.61 — well-defined team boundaries. ${d.interEdgePct}% of emails cross cluster boundaries.</div></div></div>
+        <div class="insight-row"><div class="insight-icon" style="background:#faece7;color:#712b13">&#9888;</div><div><div class="insight-title">${d.bridgeNode.name} — critical bottleneck</div><div class="insight-desc">Highest betweenness centrality (${d.bridgeNode.betweenness}). Removing this node would fragment major communication paths.</div></div></div>
+        <div class="insight-row"><div class="insight-icon" style="background:#faeeda;color:#633806">&#9675;</div><div><div class="insight-title">Low-engagement members</div><div class="insight-desc">${d.lowEngagement.map(p=>p.name).join(', ')} have below-average email volume — possible siloing or under-utilization.</div></div></div>
+        <div class="insight-row"><div class="insight-icon" style="background:#e1f5ee;color:#085041">&#8596;</div><div><div class="insight-title">Cross-dept collaboration gap</div><div class="insight-desc">Engineering ↔ Sales edge count is low. Structured cross-team sync meetings could improve alignment and response times.</div></div></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div class="card"><div class="card-title">Network health scores</div>
+          ${d.healthScores.map(s=>`<div class="health-row"><div class="health-label"><span>${s.label}</span><span class="health-score">${s.value}/100</span></div><div class="bar-bg" style="height:8px"><div class="bar-fill" style="width:${s.value}%;background:${s.value>70?'#1D9E75':s.value>45?'#BA7517':'#E24B4A'}"></div></div></div>`).join('')}
+        </div>
+        <div class="card"><div class="card-title">Low-engagement nodes</div>
+          ${d.lowEngagement.map(p=>`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;font-size:13px"><div><div class="td-name">${p.name}</div><div class="td-sub">${p.dept}</div></div><span class="badge b-amber">${p.degree} vol</span></div>`).join('')}
+        </div>
+      </div>
+    </div>`;
+}
+
+// ─────────────────────────────────────────────────
+// EMAILS CRUD
+// ─────────────────────────────────────────────────
+let emailPage = 1, emailSearch = '', emailFilters = {};
+async function renderEmails() {
+  document.getElementById('topbar-actions').innerHTML = `<button class="btn btn-primary" onclick="openAddEmailModal()">+ Add email</button>`;
+  await loadEmailTable();
+}
+async function loadEmailTable() {
+  const qs = new URLSearchParams({ page: emailPage, limit: 15, ...emailFilters });
+  if (emailSearch) qs.set('search', emailSearch);
+  const res = await apiFetch(`/emails?${qs}`);
+  if (!res.success) return;
+  const { data, total, page, pages } = res;
+  const peopleRes = await apiFetch('/people');
+  const people = peopleRes.data || [];
+  const pMap = {}; people.forEach(p => pMap[p.id] = p);
+  const area = document.getElementById('content-area');
+  area.innerHTML = `
+    <div class="search-row">
+      <input class="search-input" placeholder="Search subject or body…" value="${emailSearch}" oninput="emailSearch=this.value;emailPage=1;loadEmailTable()">
+      <select class="filter-select" onchange="emailFilters.sentiment=this.value||undefined;emailPage=1;loadEmailTable()">
+        <option value="">All sentiment</option><option>Positive</option><option>Neutral</option><option>Negative</option>
+      </select>
+      <select class="filter-select" onchange="emailFilters.priority=this.value||undefined;emailPage=1;loadEmailTable()">
+        <option value="">All priority</option><option>High</option><option>Medium</option><option>Low</option>
+      </select>
+      <select class="filter-select" onchange="emailFilters.status=this.value||undefined;emailPage=1;loadEmailTable()">
+        <option value="">All status</option><option>Read</option><option>Unread</option><option>Replied</option><option>Archived</option>
+      </select>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>From</th><th>To</th><th>Subject</th><th>Category</th><th>Sentiment</th><th>Priority</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead>
+        <tbody>${data.length ? data.map(e=>`<tr>
+          <td><div class="td-name">${pMap[e.from]?.name||e.from}</div><div class="td-sub">${pMap[e.from]?.dept||''}</div></td>
+          <td><div class="td-name">${pMap[e.to]?.name||e.to}</div></td>
+          <td style="max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${e.subject}</td>
+          <td><span class="badge b-purple">${e.category}</span></td>
+          <td>${sentBadge(e.sentiment)}</td>
+          <td>${priBadge(e.priority)}</td>
+          <td>${statBadge(e.status)}</td>
+          <td style="white-space:nowrap">${e.date}</td>
+          <td><div style="display:flex;gap:4px">
+            <button class="btn btn-sm" onclick="viewEmailModal('${e.id}')">View</button>
+            <button class="btn btn-sm" onclick="editEmailModal('${e.id}')">Edit</button>
+            <button class="btn btn-sm btn-danger" onclick="deleteEmail('${e.id}')">Del</button>
+          </div></td>
+        </tr>`).join('') : '<tr><td colspan="9" class="empty">No emails found</td></tr>'}</tbody>
+      </table>
+    </div>
+    <div class="pagination">
+      <div class="page-info">${total} results — page ${page} of ${pages}</div>
+      ${Array.from({length:pages},(_,i)=>`<button class="page-btn${i+1===page?' active':''}" onclick="emailPage=${i+1};loadEmailTable()">${i+1}</button>`).join('')}
+    </div>`;
+}
+async function openAddEmailModal() {
+  const pr = await apiFetch('/people');
+  const people = pr.data || [];
+  const opts = people.map(p=>`<option value="${p.id}">${p.name} (${p.dept})</option>`).join('');
+  openModal('Add email record', `
+    <div class="form-row"><div class="form-group"><label class="form-label">From</label><select class="form-select" id="ef-from">${opts}</select></div>
+    <div class="form-group"><label class="form-label">To</label><select class="form-select" id="ef-to">${opts}</select></div></div>
+    <div class="form-group"><label class="form-label">Subject</label><input class="form-input" id="ef-subject" placeholder="Subject"></div>
+    <div class="form-group"><label class="form-label">Body</label><textarea class="form-textarea" id="ef-body" placeholder="Email body…"></textarea></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Category</label><select class="form-select" id="ef-cat"><option>Work</option><option>Marketing</option><option>Finance</option><option>HR</option><option>Support</option></select></div>
+      <div class="form-group"><label class="form-label">Sentiment</label><select class="form-select" id="ef-sent"><option>Positive</option><option>Neutral</option><option>Negative</option></select></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Priority</label><select class="form-select" id="ef-pri"><option>High</option><option selected>Medium</option><option>Low</option></select></div>
+      <div class="form-group"><label class="form-label">Status</label><select class="form-select" id="ef-stat"><option>Unread</option><option>Read</option><option>Replied</option><option>Archived</option></select></div>
+    </div>`,
+    [{ label:'Save', cls:'btn-primary', fn:'saveNewEmail()' }]);
+}
+async function saveNewEmail() {
+  const body = {
+    from: document.getElementById('ef-from').value,
+    to:   document.getElementById('ef-to').value,
+    subject: document.getElementById('ef-subject').value,
+    body: document.getElementById('ef-body').value,
+    category: document.getElementById('ef-cat').value,
+    sentiment: document.getElementById('ef-sent').value,
+    priority: document.getElementById('ef-pri').value,
+    status: document.getElementById('ef-stat').value,
+  };
+  if (!body.subject) { showToast('Subject is required', true); return; }
+  const res = await apiFetch('/emails', { method:'POST', body });
+  if (res.success) { closeModal(); showToast('Email added'); loadEmailTable(); }
+}
+async function viewEmailModal(id) {
+  const res = await apiFetch(`/emails/${id}`);
+  if (!res.success) return;
+  const e = res.data;
+  openModal(e.subject, `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;font-size:13px">
+      <div><span style="color:var(--text3)">From:</span> <strong>${e.fromPerson?.name||e.from}</strong></div>
+      <div><span style="color:var(--text3)">To:</span> <strong>${e.toPerson?.name||e.to}</strong></div>
+      <div><span style="color:var(--text3)">Date:</span> ${e.date}</div>
+      <div><span style="color:var(--text3)">Category:</span> ${e.category}</div>
+      <div>Sentiment: ${sentBadge(e.sentiment)}</div>
+      <div>Priority: ${priBadge(e.priority)}</div>
+      <div>Status: ${statBadge(e.status)}</div>
+      <div><span style="color:var(--text3)">Resp. time:</span> ${e.responseTimeHours ? e.responseTimeHours+'h' : '—'}</div>
+    </div>
+    <div style="padding:12px;background:var(--bg3);border-radius:var(--radius);font-size:13px;line-height:1.7;color:var(--text2)">${e.body||'No body preview.'}</div>`,
+    [{ label:'Edit', cls:'btn-primary', fn:`closeModal();editEmailModal('${id}')` }]);
+}
+async function editEmailModal(id) {
+  const [er, pr] = await Promise.all([apiFetch(`/emails/${id}`), apiFetch('/people')]);
+  if (!er.success) return;
+  const e = er.data, people = pr.data || [];
+  const opts = (sel) => people.map(p=>`<option value="${p.id}"${p.id===sel?' selected':''}>${p.name} (${p.dept})</option>`).join('');
+  openModal('Edit email', `
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">From</label><select class="form-select" id="eef-from">${opts(e.from)}</select></div>
+      <div class="form-group"><label class="form-label">To</label><select class="form-select" id="eef-to">${opts(e.to)}</select></div>
+    </div>
+    <div class="form-group"><label class="form-label">Subject</label><input class="form-input" id="eef-subject" value="${e.subject}"></div>
+    <div class="form-group"><label class="form-label">Body</label><textarea class="form-textarea" id="eef-body">${e.body}</textarea></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Sentiment</label>
+        <select class="form-select" id="eef-sent">${['Positive','Neutral','Negative'].map(s=>`<option${s===e.sentiment?' selected':''}>${s}</option>`).join('')}</select></div>
+      <div class="form-group"><label class="form-label">Priority</label>
+        <select class="form-select" id="eef-pri">${['High','Medium','Low'].map(s=>`<option${s===e.priority?' selected':''}>${s}</option>`).join('')}</select></div>
+    </div>
+    <div class="form-group"><label class="form-label">Status</label>
+      <select class="form-select" id="eef-stat">${['Read','Unread','Replied','Archived'].map(s=>`<option${s===e.status?' selected':''}>${s}</option>`).join('')}</select></div>`,
+    [{ label:'Save changes', cls:'btn-primary', fn:`saveEditEmail('${id}')` }]);
+}
+async function saveEditEmail(id) {
+  const body = {
+    from: document.getElementById('eef-from').value,
+    to:   document.getElementById('eef-to').value,
+    subject: document.getElementById('eef-subject').value,
+    body: document.getElementById('eef-body').value,
+    sentiment: document.getElementById('eef-sent').value,
+    priority: document.getElementById('eef-pri').value,
+    status: document.getElementById('eef-stat').value,
+  };
+  const res = await apiFetch(`/emails/${id}`, { method:'PUT', body });
+  if (res.success) { closeModal(); showToast('Email updated'); loadEmailTable(); }
+}
+async function deleteEmail(id) {
+  if (!confirm('Delete this email?')) return;
+  const res = await apiFetch(`/emails/${id}`, { method:'DELETE' });
+  if (res.success) { showToast('Email deleted'); loadEmailTable(); }
+}
+
+// ─────────────────────────────────────────────────
+// PEOPLE CRUD
+// ─────────────────────────────────────────────────
+async function renderPeople() {
+  document.getElementById('topbar-actions').innerHTML = `<button class="btn btn-primary" onclick="openAddPersonModal()">+ Add person</button>`;
+  const res = await apiFetch('/people');
+  if (!res.success) return;
+  const people = res.data;
+  const area = document.getElementById('content-area');
+  area.innerHTML = `
+    <div class="grid-4" style="margin-bottom:18px">
+      ${['Engineering','Marketing','Finance','HR','Sales','Executive'].map(d=>{
+        const n=people.filter(p=>p.dept===d).length;
+        return `<div class="metric"><div class="metric-label">${d}</div><div class="metric-value">${n}</div><div class="metric-sub">members</div></div>`;
+      }).join('')}
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>#</th><th>Name</th><th>Email</th><th>Department</th><th>Role</th><th>Actions</th></tr></thead>
+        <tbody>${people.map((p,i)=>`<tr>
+          <td><span class="rank">${i+1}</span></td>
+          <td class="td-name">${p.name}</td>
+          <td style="color:var(--text3);font-size:12px">${p.email}</td>
+          <td>${deptBadge(p.dept)}</td>
+          <td style="color:var(--text2)">${p.role}</td>
+          <td><div style="display:flex;gap:4px">
+            <button class="btn btn-sm" onclick="editPersonModal('${p.id}')">Edit</button>
+            <button class="btn btn-sm btn-danger" onclick="deletePerson('${p.id}')">Del</button>
+          </div></td>
+        </tr>`).join('')}</tbody>
+      </table>
+    </div>`;
+}
+function openAddPersonModal() {
+  const depts = ['Engineering','Marketing','Finance','HR','Sales','Executive'];
+  openModal('Add person', `
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Full name</label><input class="form-input" id="ap-name" placeholder="Jane Doe"></div>
+      <div class="form-group"><label class="form-label">Email</label><input class="form-input" id="ap-email" placeholder="jane@acme.com"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Department</label><select class="form-select" id="ap-dept">${depts.map(d=>`<option>${d}</option>`).join('')}</select></div>
+      <div class="form-group"><label class="form-label">Role</label><input class="form-input" id="ap-role" placeholder="e.g. Senior Developer"></div>
+    </div>`,
+    [{ label:'Add person', cls:'btn-primary', fn:'saveNewPerson()' }]);
+}
+async function saveNewPerson() {
+  const body = { name:document.getElementById('ap-name').value.trim(), email:document.getElementById('ap-email').value.trim(), dept:document.getElementById('ap-dept').value, role:document.getElementById('ap-role').value.trim() };
+  if (!body.name || !body.email) { showToast('Name and email required', true); return; }
+  const res = await apiFetch('/people', { method:'POST', body });
+  if (res.success) { closeModal(); showToast('Person added'); renderPeople(); }
+}
+async function editPersonModal(id) {
+  const res = await apiFetch(`/people/${id}`);
+  if (!res.success) return;
+  const p = res.data;
+  const depts = ['Engineering','Marketing','Finance','HR','Sales','Executive'];
+  openModal('Edit person', `
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Full name</label><input class="form-input" id="ep-name" value="${p.name}"></div>
+      <div class="form-group"><label class="form-label">Email</label><input class="form-input" id="ep-email" value="${p.email}"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Department</label><select class="form-select" id="ep-dept">${depts.map(d=>`<option${d===p.dept?' selected':''}>${d}</option>`).join('')}</select></div>
+      <div class="form-group"><label class="form-label">Role</label><input class="form-input" id="ep-role" value="${p.role}"></div>
+    </div>`,
+    [{ label:'Save', cls:'btn-primary', fn:`saveEditPerson('${id}')` }]);
+}
+async function saveEditPerson(id) {
+  const body = { name:document.getElementById('ep-name').value, email:document.getElementById('ep-email').value, dept:document.getElementById('ep-dept').value, role:document.getElementById('ep-role').value };
+  const res = await apiFetch(`/people/${id}`, { method:'PUT', body });
+  if (res.success) { closeModal(); showToast('Person updated'); renderPeople(); }
+}
+async function deletePerson(id) {
+  if (!confirm('Delete this person and all their connections?')) return;
+  const res = await apiFetch(`/people/${id}`, { method:'DELETE' });
+  if (res.success) { showToast('Person deleted'); renderPeople(); }
+}
+
+// ─────────────────────────────────────────────────
+// EDGES CRUD
+// ─────────────────────────────────────────────────
+async function renderEdges() {
+  document.getElementById('topbar-actions').innerHTML = `<button class="btn btn-primary" onclick="openAddEdgeModal()">+ Add edge</button>`;
+  const res = await apiFetch('/edges');
+  if (!res.success) return;
+  const edges = res.data;
+  const area = document.getElementById('content-area');
+  area.innerHTML = `
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>#</th><th>From</th><th>To</th><th>Weight</th><th>Dept→Dept</th><th>Actions</th></tr></thead>
+        <tbody>${edges.map((e,i)=>`<tr>
+          <td><span class="rank">${i+1}</span></td>
+          <td><div class="td-name">${e.fromPerson?.name||e.from}</div><div class="td-sub">${e.fromPerson?.dept||''}</div></td>
+          <td><div class="td-name">${e.toPerson?.name||e.to}</div><div class="td-sub">${e.toPerson?.dept||''}</div></td>
+          <td><strong>${e.weight}</strong></td>
+          <td style="font-size:12px;color:var(--text2)">${e.fromPerson?.dept||'?'} &#8594; ${e.toPerson?.dept||'?'}</td>
+          <td><button class="btn btn-sm btn-danger" onclick="deleteEdge('${e.id}')">Del</button></td>
+        </tr>`).join('')}</tbody>
+      </table>
+    </div>`;
+}
+async function openAddEdgeModal() {
+  const pr = await apiFetch('/people');
+  const people = pr.data || [];
+  const opts = people.map(p=>`<option value="${p.id}">${p.name} (${p.dept})</option>`).join('');
+  openModal('Add edge', `
+    <div class="form-group"><label class="form-label">From person</label><select class="form-select" id="ae-from">${opts}</select></div>
+    <div class="form-group"><label class="form-label">To person</label><select class="form-select" id="ae-to">${opts}</select></div>
+    <div class="form-group"><label class="form-label">Weight (email volume)</label><input class="form-input" type="number" id="ae-weight" value="1" min="1"></div>`,
+    [{ label:'Add edge', cls:'btn-primary', fn:'saveNewEdge()' }]);
+}
+async function saveNewEdge() {
+  const body = { from:document.getElementById('ae-from').value, to:document.getElementById('ae-to').value, weight:parseInt(document.getElementById('ae-weight').value)||1 };
+  const res = await apiFetch('/edges', { method:'POST', body });
+  if (res.success) { closeModal(); showToast('Edge added'); renderEdges(); }
+}
+async function deleteEdge(id) {
+  if (!confirm('Delete this edge?')) return;
+  const res = await apiFetch(`/edges/${id}`, { method:'DELETE' });
+  if (res.success) { showToast('Edge deleted'); renderEdges(); }
+}
+
+// ─────────────────────────────────────────────────
+// INIT
+// ─────────────────────────────────────────────────
+nav('dashboard');
+</script>
+</body>
+</html>
